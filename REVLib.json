@@ -1,0 +1,210 @@
+package frc.robot.util;
+
+import static edu.wpi.first.units.Units.Amps;
+import static edu.wpi.first.units.Units.Volts;
+
+import com.revrobotics.REVLibError;
+import com.revrobotics.ResetMode;
+import com.revrobotics.servohub.ServoChannel;
+import com.revrobotics.servohub.ServoChannel.ChannelId;
+import com.revrobotics.servohub.ServoHub;
+import com.revrobotics.servohub.config.ServoChannelConfig;
+import com.revrobotics.servohub.config.ServoChannelConfig.BehaviorWhenDisabled;
+import com.revrobotics.servohub.config.ServoHubConfig;
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.units.measure.Current;
+import edu.wpi.first.units.measure.Voltage;
+
+public class ServoManager {
+  public static class ServoConfig {
+    /** Pulse width (in microseconds) for maximum negative output */
+    public int minPulse_us;
+
+    /** Pulse width (in microseconds) for zero output */
+    public int centerPulse_us;
+
+    /** Pulse width (in microseconds) for maximum positive output */
+    public int maxPulse_us;
+
+    /** Pulse width (in microseconds) from center to min positive output */
+    public int positiveDeadband_us = 0;
+
+    /** Pulse width (in microseconds) from center to min negative output */
+    public int negativeDeadband_us = 0;
+
+    public boolean supplyPowerWhenDisabled = true;
+
+    public static final ServoConfig SRS_V2_CONTINUOUS =
+        new ServoConfig(500, 2500).withDeadband(70, 30);
+
+    public ServoConfig(int minPulse_us, int centerPulse_us, int maxPulse_us) {
+      this.minPulse_us = minPulse_us;
+      this.centerPulse_us = centerPulse_us;
+      this.maxPulse_us = maxPulse_us;
+    }
+
+    public ServoConfig(int minPulse_us, int maxPulse_us) {
+      this(minPulse_us, (minPulse_us + maxPulse_us) / 2, maxPulse_us);
+    }
+
+    public ServoConfig withSupplyPowerWhenDisabled(boolean supplyPowerWhenDisabled) {
+      this.supplyPowerWhenDisabled = supplyPowerWhenDisabled;
+      return this;
+    }
+
+    public ServoConfig withDeadband(int negativeDeadband_us, int positiveDeadband_us) {
+      this.negativeDeadband_us = negativeDeadband_us;
+      this.positiveDeadband_us = positiveDeadband_us;
+      return this;
+    }
+
+    public ServoConfig withDeadband(int deadband_us) {
+      return this.withDeadband(deadband_us, deadband_us);
+    }
+  }
+
+  private static class Servo {
+    private final ServoHub hub;
+    private final ServoChannel channel;
+    private final ServoConfig config;
+
+    Servo(ServoHub hub, ChannelId channelId, ServoConfig config) {
+      this.hub = hub;
+      this.channel = hub.getServoChannel(channelId);
+      this.config = config;
+
+      hub.configure(
+          new ServoHubConfig()
+              .apply(
+                  channelId,
+                  new ServoChannelConfig(channelId)
+                      .pulseRange(config.minPulse_us, config.centerPulse_us, config.maxPulse_us)
+                      .disableBehavior(
+                          config.supplyPowerWhenDisabled
+                              ? BehaviorWhenDisabled.kSupplyPower
+                              : BehaviorWhenDisabled.kDoNotSupplyPower)),
+          ResetMode.kNoResetSafeParameters);
+    }
+
+    /**
+     * Enables/Disables the servo
+     *
+     * @param enabled true = enabled, false = disabled
+     */
+    public REVLibError setEnabled(boolean enabled) {
+      return channel.setEnabled(enabled);
+    }
+
+    /**
+     * Turns on/off the power to the servo
+     *
+     * @param powered true = powered on, false = powered off
+     */
+    public REVLibError setPowered(boolean powered) {
+      return channel.setPowered(powered);
+    }
+
+    /**
+     * Sets the servo pulse width to the desired value
+     *
+     * @param pulseWidth_us The desired pulse width in microseconds
+     */
+    protected void setPulseWidth(int pulseWidth_us) {
+      channel.setPulseWidth(MathUtil.clamp(pulseWidth_us, config.minPulse_us, config.maxPulse_us));
+    }
+
+    /**
+     * Set the servo output (-1 to 1)
+     *
+     * @param output The desired servo output
+     */
+    public void setOutput(double output) {
+      if (output > 0) {
+        int adjustedCenter = config.centerPulse_us + config.positiveDeadband_us;
+
+        setPulseWidth(
+            (int) Math.round(adjustedCenter + (config.maxPulse_us - adjustedCenter) * output));
+      } else if (output < 0) {
+        int adjustedCenter = config.centerPulse_us - config.negativeDeadband_us;
+
+        setPulseWidth(
+            (int) Math.round(adjustedCenter + (adjustedCenter - config.minPulse_us) * output));
+      } else {
+        setPulseWidth(config.centerPulse_us);
+      }
+    }
+
+    /**
+     * @return The voltage supplied to the servo by the servo hub
+     */
+    public Voltage getSupplyVoltage() {
+      return Volts.of(hub.getServoVoltage());
+    }
+
+    /**
+     * @return The servo's output current in Amps
+     */
+    public Current getOutputCurrent() {
+      return Amps.of(channel.getCurrent());
+    }
+  }
+
+  public static class AngularServo extends Servo {
+    AngularServo(ServoHub hub, ChannelId channelId, ServoConfig config) {
+      super(hub, channelId, config);
+    }
+  }
+
+  public static class ContinuousServo extends Servo {
+    ContinuousServo(ServoHub hub, ChannelId channelId, ServoConfig config) {
+      super(hub, channelId, config);
+    }
+  }
+
+  private final ServoHub hub;
+
+  /**
+   * Creates a new servo manager
+   *
+   * @param servoHubDeviceId The CAN Id of the servo hub
+   */
+  public ServoManager(int servoHubDeviceId) {
+    this.hub = new ServoHub(servoHubDeviceId);
+  }
+
+  /**
+   * Create a new {@link Servo} to control a specified servo channel
+   *
+   * @param channelId The specific servo channel to get
+   * @param servoConfig Specs of the servo to control
+   * @return The specified servo object
+   */
+  public AngularServo getAngularServo(ChannelId channelId, ServoConfig servoConfig) {
+    return new AngularServo(hub, channelId, servoConfig);
+  }
+
+  /**
+   * Create a new {@link Servo} to control a specified servo channel
+   *
+   * @param channelId The specific servo channel to get
+   * @param servoConfig Specs of the servo to control
+   * @return The specified servo object
+   */
+  public ContinuousServo getContinuousServo(ChannelId channelId, ServoConfig servoConfig) {
+    return new ContinuousServo(hub, channelId, servoConfig);
+  }
+
+  /**
+   * @return The voltage supplied to the servo hub.
+   */
+  public Voltage getSupplyVoltage() {
+    return Volts.of(hub.getDeviceVoltage());
+  }
+
+  /**
+   * @return The servo hub's total output current in Amps.
+   */
+  public Current getTotalOutputCurrent() {
+    return Amps.of(hub.getDeviceCurrent());
+  }
+}

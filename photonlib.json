@@ -1,0 +1,60 @@
+package frc.robot.util.builtintest;
+
+import edu.wpi.first.wpilibj.Alert;
+
+/**
+ * An {@link BuiltInTest} that closely mirrors the wpilib {@link Alert} api. This test passes by
+ * default, and can be set if a fail condition occurs.
+ */
+public class AlertBIT extends BuiltInTest {
+  private boolean failing = false;
+  private String detail = "";
+
+  /**
+   * Creates a new alert in the default group - "Alerts". If this is the first to be instantiated,
+   * the appropriate entries will be added to NetworkTables.
+   *
+   * @param name Unique name for the test
+   * @param severity Test urgency level.
+   * @param detail Additional details on what caused the test to fail.
+   */
+  public AlertBIT(String name, Severity severity, String detail) {
+    super(name, severity);
+    this.detail = detail;
+  }
+
+  /**
+   * Creates a new alert in the default group - "Alerts". If this is the first to be instantiated,
+   * the appropriate entries will be added to NetworkTables.
+   *
+   * @param name Unique name for the test
+   * @param severity Test urgency level.
+   */
+  public AlertBIT(String name, Severity severity) {
+    this(name, severity, "");
+  }
+
+  /**
+   * Sets whether the test is currently failing. This method can be safely called periodically.
+   *
+   * @param failing Whether to display the alert.
+   */
+  public void set(boolean failing) {
+    this.failing = failing;
+  }
+
+  /**
+   * Updates test's failing detail text. Use this method to dynamically change the failure alert
+   * text, such as including more details about the detected problem.
+   *
+   * @param detail Additional details on what caused the test to fail.
+   */
+  public void setDetail(String detail) {
+    this.detail = detail;
+  }
+
+  @Override
+  public TestStatus getStatus() {
+    return new TestStatus(!failing, detail);
+  }
+}

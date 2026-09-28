@@ -1,0 +1,119 @@
+package frc.robot.util;
+
+import choreo.util.ChoreoAllianceFlipUtil;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
+
+public class AllianceUtil {
+  public static final Alliance DEFAULT_ALLIANCE = Alliance.Blue;
+
+  /**
+   * Returns the current alliance or {@link DEFAULT_ALLIANCE}
+   *
+   * @return The selected Alliance or default
+   */
+  public static Alliance getAlliance() {
+    return DriverStation.getAlliance().orElse(DEFAULT_ALLIANCE);
+  }
+
+  /**
+   * Returns whether the robot should flip it's field relative behaviors, such as driving and
+   * aiming. Because the field origin is on the blue side, this will return true when playing as the
+   * red alliance.
+   *
+   * @return A boolean indicating whether to flip the field
+   */
+  public static boolean shouldFlip() {
+    return getAlliance() == DriverStation.Alliance.Red;
+  }
+
+  /**
+   * Fips the translation if needed according to {@link #shouldFlip}
+   *
+   * @param blueTranslation The translation to flip.
+   * @return The alliance flipped translation.
+   */
+  public static Translation2d flip(Translation2d blueTranslation) {
+    if (shouldFlip()) {
+      return ChoreoAllianceFlipUtil.flip(blueTranslation);
+    } else {
+      return blueTranslation;
+    }
+  }
+
+  /**
+   * Fips the rotation if needed according to {@link #shouldFlip}
+   *
+   * @param blueRotation The rotation to flip.
+   * @return The alliance flipped rotation.
+   */
+  public static Rotation2d flip(Rotation2d blueRotation) {
+    if (shouldFlip()) {
+      return ChoreoAllianceFlipUtil.flip(blueRotation);
+    } else {
+      return blueRotation;
+    }
+  }
+
+  /**
+   * Fips the pose if needed according to {@link #shouldFlip}
+   *
+   * @param bluePose The pose to flip.
+   * @return The alliance flipped pose.
+   */
+  public static Pose2d flip(Pose2d bluePose) {
+    if (shouldFlip()) {
+      return ChoreoAllianceFlipUtil.flip(bluePose);
+    } else {
+      return bluePose;
+    }
+  }
+
+  /**
+   * Fips the translation if needed according to {@link #shouldFlip}
+   *
+   * @param blueTranslation The translation to flip.
+   * @return The alliance flipped translation.
+   */
+  public static Translation3d flip(Translation3d blueTranslation) {
+    if (shouldFlip()) {
+      return ChoreoAllianceFlipUtil.flip(blueTranslation);
+    } else {
+      return blueTranslation;
+    }
+  }
+
+  /**
+   * Fips the rotation if needed according to {@link #shouldFlip}
+   *
+   * @param blueRotation The rotation to flip.
+   * @return The alliance flipped rotation.
+   */
+  public static Rotation3d flip(Rotation3d blueRotation) {
+    if (shouldFlip()) {
+      return ChoreoAllianceFlipUtil.flip(blueRotation);
+    } else {
+      return blueRotation;
+    }
+  }
+
+  /**
+   * Fips the pose if needed according to {@link #shouldFlip}
+   *
+   * @param bluePose The pose to flip.
+   * @return The alliance flipped pose.
+   */
+  public static Pose3d flip(Pose3d bluePose) {
+    if (shouldFlip()) {
+      return ChoreoAllianceFlipUtil.flip(bluePose);
+    } else {
+      return bluePose;
+    }
+  }
+}

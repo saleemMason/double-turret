@@ -1,0 +1,108 @@
+package frc.robot.autos.routines;
+
+import choreo.auto.AutoRoutine;
+import choreo.auto.AutoTrajectory;
+import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.autos.AutoManager;
+import frc.robot.autos.AutoManager.AutoParameters;
+import frc.robot.commands.ShootingCommands;
+import frc.robot.generated.choreo.ChoreoTraj;
+
+public class Autos extends AutoRoutineBuilder {
+  private Autos(AutoRoutine routine, AutoParameters p) {
+    super(routine, p);
+  }
+
+  private void setupHoodLowering(AutoTrajectory... paths) {
+    if (paths.length == 0) {
+      return;
+    }
+
+    Trigger lowerHoodTrigger = multiAtTime("lowerHood", paths);
+    Trigger raiseHoodTrigger = multiAtTime("raiseHood", paths);
+
+    lowerHoodTrigger.onTrue(
+        ShootingCommands.aimHoodsSafe(r.aimController(), s.leftHood(), s.rightHood())
+            .until(raiseHoodTrigger));
+  }
+
+  private void setupIntaking(AutoTrajectory... paths) {
+    Trigger intakeTriger = multiAtTime("intake", paths);
+    Trigger endIntakeTrigger = multiAtTime("endIntake", paths);
+
+    intakeTriger.onTrue(s.intake().intake().until(endIntakeTrigger));
+    intakeTriger.onTrue(Commands.parallel(s.leftHood().zeroHood(), s.rightHood().zeroHood()));
+  }
+
+  private void doubleSwipeRoutine(ChoreoTraj firstSwipe, ChoreoTraj secondSwipe) {
+    AutoTrajectory firstSwipePath = loadPath(firstSwipe);
+    AutoTrajectory secondSwipePath = loadPath(secondSwipe);
+
+    setupHoodLowering(firstSwipePath, secondSwipePath);
+    setupIntaking(firstSwipePath, secondSwipePath);
+
+    routine.active().whileTrue(ShootingCommands.aimAtHub(r.aimController()));
+    firstSwipePath
+        .active()
+        .whileTrue(
+            ShootingCommands.spinFlywheels(r.aimController(), s.leftFlywheel(), s.rightFlywheel()));
+
+    routine
+        .active()
+        .onTrue(
+            Commands.sequence(
+                firstSwipePath.resetOdometry(), s.intake().deploy(), firstSwipePath.cmd()));
+
+    firstSwipePath
+        .done()
+        .onTrue(
+            Commands.sequence(
+                Commands.parallel(
+                        lineUpAtEnd(firstSwipePath.getFinalPose().get()),
+                        ShootingCommands.shoot(r.aimController(), s).asProxy())
+                    .withTimeout(4),
+                secondSwipePath.cmd()));
+
+    secondSwipePath.atTime("shoot").onTrue(ShootingCommands.shoot(r.aimController(), s).asProxy());
+
+    secondSwipePath
+        .active()
+        .whileTrue(
+            ShootingCommands.spinFlywheels(r.aimController(), s.leftFlywheel(), s.rightFlywheel()));
+
+    secondSwipePath.done().onTrue(lineUpAtEnd(secondSwipePath.getFinalPose().get()));
+  }
+
+  public static void setupDoubleSwipeRoutine(AutoManager autoManager) {
+    autoManager.setupAutoRoutine(
+        "Double Swipe",
+        (routine, p) ->
+            new Autos(routine, p)
+                .doubleSwipeRoutine(ChoreoTraj.LeftStartSwipe, ChoreoTraj.LeftSecondSwipe));
+  }
+
+  public static void setupShortDoubleSwipeRoutine(AutoManager autoManager) {
+    autoManager.setupAutoRoutine(
+        "Short Double Swipe",
+        (routine, p) ->
+            new Autos(routine, p)
+                .doubleSwipeRoutine(
+                    ChoreoTraj.ShortLeftStartSwipe, ChoreoTraj.ShortLeftSecondSwipe));
+  }
+
+  public static void setupAvoidanceDoubleSwipeRoutine(AutoManager autoManager) {
+    autoManager.setupAutoRoutine(
+        "Avoidance Double Swipe",
+        (routine, p) ->
+            new Autos(routine, p)
+                .doubleSwipeRoutine(
+                    ChoreoTraj.AvoidanceLeftStartSwipe, ChoreoTraj.ShortLeftSecondSwipe));
+  }
+
+  public static void setupAutos(AutoManager autoManager) {
+    setupDoubleSwipeRoutine(autoManager);
+    setupShortDoubleSwipeRoutine(autoManager);
+    setupAvoidanceDoubleSwipeRoutine(autoManager);
+  }
+}

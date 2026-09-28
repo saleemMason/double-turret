@@ -1,0 +1,35 @@
+package frc.robot.util;
+
+import com.ctre.phoenix6.CANBus;
+import com.ctre.phoenix6.hardware.CANcoder;
+import com.ctre.phoenix6.hardware.TalonFX;
+
+public class CanID {
+  private final CANBus bus;
+  private final int deviceId;
+
+  public CanID(int deviceId, CANBus bus) {
+    this.deviceId = deviceId;
+    this.bus = bus;
+  }
+
+  public CanID(int deviceId) {
+    this(deviceId, CANBus.roboRIO());
+  }
+
+  public CANBus bus() {
+    return bus;
+  }
+
+  public int deviceId() {
+    return deviceId;
+  }
+
+  public TalonFX getTalon() {
+    return new TalonFX(deviceId, bus);
+  }
+
+  public CANcoder getCancoder() {
+    return new CANcoder(deviceId, bus);
+  }
+}
